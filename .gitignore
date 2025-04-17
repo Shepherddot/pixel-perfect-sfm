@@ -19,3 +19,8 @@ outputs/
 datasets/*
 # except the demo
 !datasets/sacre_coeur/
+
+.idea
+cmake-build-debug
+error.txt
+header.txt

@@ -94,7 +94,7 @@ int FeatureReferenceBundleOptimizer::AddResiduals(
     FeatureView<dtype>& feature_view,
     std::unordered_map<colmap::point3D_t, Reference>& references) {
   const bool constant_pose =
-      !options_.refine_extrinsics || setup_.HasConstantPose(image_id);
+      !options_.refine_extrinsics || setup_.HasConstantCamPose(image_id);
 
   colmap::Image& image = reconstruction->Image(image_id);
   colmap::Camera& camera = reconstruction->Camera(image.CameraId());
@@ -105,20 +105,20 @@ int FeatureReferenceBundleOptimizer::AddResiduals(
     return 0;
   }
 
-  colmap::point3D_t point3D_id = point2D.Point3DId();
+  colmap::point3D_t point3D_id = point2D.point3D_id;
   colmap::Point3D& point3D = reconstruction->Point3D(point3D_id);
 
-  double* qvec_data = image.Qvec().data();
-  double* tvec_data = image.Tvec().data();
-  double* camera_params_data = camera.ParamsData();
-  double* xyz = point3D.XYZ().data();
+  double* qvec_data = image.CamFromWorld().rotation.coeffs().data();
+  double* tvec_data = image.CamFromWorld().translation.data();
+  double* camera_params_data = camera.params.data();
+  double* xyz = point3D.xyz.data();
 
   ceres::ResidualBlockId block_id;
 
   if (constant_pose) {
     ceres::CostFunction* cost_function =
         CreateFeatureReferenceConstantPoseCostFunctor<CHANNELS, N_NODES, -1>(
-            camera.ModelId(), qvec_data, tvec_data,
+            camera.model_id, qvec_data, tvec_data,
             feature_view.GetFeaturePatch(image_id, point2D_idx),
             references.at(point3D_id).DescriptorData(),
             references.at(point3D_id).NodeOffsets3DData(),
@@ -128,15 +128,13 @@ int FeatureReferenceBundleOptimizer::AddResiduals(
   } else {
     ceres::CostFunction* cost_function =
         CreateFeatureReferenceCostFunctor<CHANNELS, N_NODES, -1>(
-            camera.ModelId(),
+            camera.model_id,
             feature_view.GetFeaturePatch(image_id, point2D_idx),
             references.at(point3D_id).DescriptorData(),
             references.at(point3D_id).NodeOffsets3DData(),
             interpolation_config_);
 
-    block_id =
-        problem_->AddResidualBlock(cost_function, loss_function, qvec_data,
-                                   tvec_data, xyz, camera_params_data);
+    block_id = problem_->AddResidualBlock(cost_function, loss_function, qvec_data, tvec_data, xyz, camera_params_data);
     image_num_residuals_[image_id] += 1;
   }
 

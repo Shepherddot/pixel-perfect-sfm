@@ -1,10 +1,10 @@
 
 #pragma once
 
-#include <colmap/base/camera_models.h>
-#include <colmap/base/image.h>
-#include <colmap/base/projection.h>
-#include <colmap/util/math.h>
+#include <colmap/sensor/models.h>
+#include <colmap/scene/image.h>
+#include <colmap/scene/projection.h>
+#include <colmap/math/math.h>
 
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
@@ -70,19 +70,19 @@ inline void WorldToPixel(const T* camera_params, const T* qvec, const T* tvec,
   projection[0] /= projection[2];  // u
   projection[1] /= projection[2];  // v
 
-  CameraModel::WorldToImage(camera_params, projection[0], projection[1], &xy[0],
-                            &xy[1]);
+  T homo = T(1.0);
+
+  CameraModel::ImgFromCam(camera_params, projection[0], projection[1], homo, &xy[0], &xy[1]);
 }
 
 inline void WorldToPixel(const colmap::Camera& camera,
                          const Eigen::Vector4d& qvec,
                          const Eigen::Vector3d& tvec,
                          const Eigen::Vector3d& xyz, double* xy) {
-  switch (camera.ModelId()) {
+  switch (camera.model_id) {
 #define CAMERA_MODEL_CASE(CameraModel)                                  \
-  case colmap::CameraModel::kModelId:                                   \
-    WorldToPixel<colmap::CameraModel>(camera.ParamsData(), qvec.data(), \
-                                      tvec.data(), xyz.data(), xy);     \
+  case colmap::CameraModel::model_id:                                   \
+    WorldToPixel<colmap::CameraModel>(camera.params.data(), qvec.data(), tvec.data(), xyz.data(), xy);     \
     break;
     CAMERA_MODEL_SWITCH_CASES
 #undef CAMERA_MODEL_CASE

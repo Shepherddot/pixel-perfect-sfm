@@ -75,8 +75,8 @@ void __ThrowCheckOpImpl(const char* file, const int line, const bool result,
                         const char* val2_str, const char* op_str) {
   if (!result) {
     std::stringstream ss;
-    ss << val1_str << " " << op_str << " " << val2_str << " (" << val1
-       << " vs. " << val2 << ")";
+    ss << val1_str << " " << op_str << " " << val2_str << " (" << int(val1)
+       << " vs. " << int(val2) << ")";
     std::string msg = ss.str();
     throw TemplateException<py::value_error>(file, line,
                                              __GetCheckString(msg.c_str()));

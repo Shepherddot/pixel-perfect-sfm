@@ -1,66 +1,36 @@
----
-Language:        Cpp
-# BasedOnStyle:  Google
-AccessModifierOffset: -1
-AlignAfterOpenBracket: true
-AlignConsecutiveAssignments: false
-AlignEscapedNewlinesLeft: true
-AlignOperands:   true
-AlignTrailingComments: true
-AllowAllParametersOfDeclarationOnNextLine: true
-AllowShortBlocksOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
-AllowShortIfStatementsOnASingleLine: true
-AllowShortLoopsOnASingleLine: true
-AlwaysBreakAfterDefinitionReturnType: None
-AlwaysBreakBeforeMultilineStrings: true
-AlwaysBreakTemplateDeclarations: true
-BinPackArguments: true
-BinPackParameters: true
+# Generated from CLion C/C++ Code Style settings
+BasedOnStyle: Google
+ColumnLimit: 150
+
+# break function call and align all arguments.
+# Align arguments vertically under the first argument when breaking lines.
+AlignAfterOpenBracket: Align
+# Do not try to pack arguments onto fewer lines; encourages breaking after commas.
+BinPackArguments: false
+BinPackParameters: OnePerLine
+# Don't put all arguments on the next line indented; align them instead.
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+
+# --- If Condition Formatting ---
+# Control breaking around binary operators (&&, ||, +, -, etc.).
+# 'None' generally leads to breaks *after* the operator when a break is needed.
+# 'NonAssignment' or 'All' would break *before* the operator.
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Attach
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializersBeforeComma: false
-ColumnLimit:     80
-CommentPragmas:  '^ IWYU pragma:'
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-ConstructorInitializerIndentWidth: 4
-ContinuationIndentWidth: 4
-Cpp11BracedListStyle: true
-DerivePointerAlignment: false
-DisableFormat:   false
-ExperimentalAutoDetectBinPacking: false
-ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
-IndentCaseLabels: true
-IndentWidth:     2
-IndentWrappedFunctionNames: false
-KeepEmptyLinesAtTheStartOfBlocks: false
-MacroBlockBegin: ''
-MacroBlockEnd:   ''
-MaxEmptyLinesToKeep: 1
-NamespaceIndentation: None
-ObjCBlockIndentWidth: 2
-ObjCSpaceAfterProperty: false
-ObjCSpaceBeforeProtocolList: false
-PenaltyBreakBeforeFirstCallParameter: 1
-PenaltyBreakComment: 300
-PenaltyBreakFirstLessLess: 120
-PenaltyBreakString: 1000
-PenaltyExcessCharacter: 1000000
-PenaltyReturnTypeOnItsOwnLine: 200
-PointerAlignment: Left
-SpaceAfterCStyleCast: false
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeParens: ControlStatements
-SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 2
-SpacesInAngles:  false
-SpacesInContainerLiterals: true
-SpacesInCStyleCastParentheses: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
-Standard:        Auto
-TabWidth:        8
-UseTab:          Never
-...
+
+# Align operands on assignment statements - often set to 'true' or 'Align'
+# AlignOperands: Align # Consider this if you want specific alignment around operators like '='
+
+# Align operands on binary expressions. Setting to 'false' or default often
+# results in standard continuation indent for conditions, which is common.
+# Set to 'Align' if you specifically want operands aligned, e.g.:
+#   if (a ==
+#           b)
+# Most prefer standard continuation indent for conditions:
+#   if (longConditionPart1 &&
+#       longConditionPart2)
+# For standard continuation indent alignment (often preferred in ifs):
+AlignOperands: false # Or let it default based on BasedOnStyle
+
+# ... ensure other settings like AllowShortIfStatementsOnASingleLine are as desired
+AllowShortIfStatementsOnASingleLine: Never # Or Empty, None

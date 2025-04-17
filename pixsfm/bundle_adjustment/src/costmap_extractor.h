@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ceres/ceres.h>
-#include <colmap/base/projection.h>
+#include <colmap/scene/projection.h>
 #include <colmap/util/types.h>
 
 #include "features/src/featuremap.h"
@@ -175,50 +175,59 @@ std::pair<FeatureSet<dtype_o>, Refs> CostMapExtractor::Run(
 
 // Easier to use and customize
 template <int CHANNELS, typename dtype_o, typename dtype>
-double CostMapExtractor::RunSubset(
-    std::unordered_set<colmap::point3D_t>& point3D_ids,
-    FeatureSet<dtype_o>& costmaps, colmap::Reconstruction& reconstruction,
-    FeatureSet<dtype>& fset, Refs& references,
-    ReferenceExtractor* ref_extractor) {
+double CostMapExtractor::RunSubset(std::unordered_set<colmap::point3D_t>& point3D_ids,
+                                   FeatureSet<dtype_o>& costmaps,
+                                   colmap::Reconstruction& reconstruction,
+                                   FeatureSet<dtype>& fset,
+                                   Refs& references,
+                                   ReferenceExtractor* ref_extractor) {
   FeatureView<dtype> fview(&fset, &reconstruction, point3D_ids);
   double seconds = 0.0;
 
   if (ref_extractor) {
-    seconds += ref_extractor->RunSubset<CHANNELS, 1>(point3D_ids, references,
-                                                     &reconstruction, fview);
+    seconds += ref_extractor->RunSubset<CHANNELS, 1>(point3D_ids, references, &reconstruction, fview);
   }
+
+  auto project2img = [&](size_t image_id, size_t p2d_id) {
+    const colmap::Image& image = reconstruction.Image(image_id);
+    const colmap::Point2D& p2D = image.Point2D(p2d_id);
+    const colmap::Point3D& p3d = reconstruction.Point3D(p2D.point3D_id);
+    const colmap::Camera& camera = reconstruction.Camera(image.CameraId());
+
+    Eigen::Vector3d cam_point = image.CamFromWorld() * p3d.xyz;
+    Eigen::Vector2d xy = camera.ImgFromCam(Eigen::Vector2d(cam_point[0] / cam_point[2], cam_point[1] / cam_point[2]));
+    return xy;
+  };
 
   timer_.Start();
   for (colmap::point3D_t point3D_id : point3D_ids) {
     Reference& reference = references.at(point3D_id);
     auto& point3D = reconstruction.Point3D(point3D_id);
-    for (auto& track_el : point3D.Track().Elements()) {
+    for (auto& track_el : point3D.track.Elements()) {
       colmap::image_t image_id = track_el.image_id;
       colmap::point2D_t point2D_idx = track_el.point2D_idx;
       FeatureMap<dtype>& fmap = fview.GetFeatureMap(image_id);
 
       std::string& image_name = fview.Mapping().at(image_id);
       auto& cost_fmap = costmaps.GetFeatureMap(image_name);
-      FeaturePatch<dtype_o>& cost_patch =
-          cost_fmap.GetFeaturePatch(point2D_idx);
+      FeaturePatch<dtype_o>& cost_patch = cost_fmap.GetFeaturePatch(point2D_idx);
 
       cost_patch.Allocate();
 
       if (fmap.IsSparse()) {
-        FillPointCostmap<CHANNELS, dtype_o>(fmap.GetFeaturePatch(point2D_idx),
-                                            reference, cost_patch);
+        FillPointCostmap<CHANNELS, dtype_o>(fmap.GetFeaturePatch(point2D_idx), reference, cost_patch);
       } else {
         // If the featuremap is dense, we slice a smaller patch
-        const colmap::Image& image = reconstruction.Image(image_id);
-        const colmap::Point2D& p2D = image.Point2D(point2D_idx);
-        Eigen::Vector2d xy = ProjectPointToImage(
-            reconstruction.Point3D(p2D.Point3DId()).XYZ(),
-            image.ProjectionMatrix(),
-            reconstruction.Camera(image.CameraId())
-          );
+        // const colmap::Image& image = reconstruction.Image(image_id);
+        // const colmap::Point2D& p2D = image.Point2D(point2D_idx);
+        // const colmap::Point3D& p3d = reconstruction.Point3D(p2D.point3D_id);
+        // const colmap::Camera& camera = reconstruction.Camera(image.CameraId());
+        //
+        // Eigen::Vector3d cam_point = image.CamFromWorld() * p3d.xyz;
+        Eigen::Vector2d xy = project2img(image_id, point2D_idx);
+
         // Involves a copy
-        FeaturePatch<dtype> fpatch = fmap.GetFeaturePatch(kDensePatchId).Slice(
-          xy, config_.dense_cut_size);
+        FeaturePatch<dtype> fpatch = fmap.GetFeaturePatch(kDensePatchId).Slice(xy, config_.dense_cut_size);
         FillPointCostmap<CHANNELS, dtype_o>(fpatch, reference, cost_patch);
       }
     }
@@ -358,20 +367,31 @@ void CostMapExtractor::FillPointCostmap(FeaturePatch<dtype>& fpatch,
 }
 
 template <typename dtype_o, typename dtype>
-FeatureSet<dtype_o> CostMapExtractor::CreateShallowCostmapFSet(
-    FeatureSet<dtype>& fset, int out_channels,
-    colmap::Reconstruction& reconstruction,
-    const std::unordered_set<colmap::point3D_t>& required_p3D_ids) {
+FeatureSet<dtype_o> CostMapExtractor::CreateShallowCostmapFSet(FeatureSet<dtype>& fset,
+                                                               int out_channels,
+                                                               colmap::Reconstruction& reconstruction,
+                                                               const std::unordered_set<colmap::point3D_t>& required_p3D_ids) {
   FeatureSet<dtype_o> cost_fset(out_channels);
   double upsampling_factor = config_.upsampling_factor;
   // Get observations which are part of the problem
   std::unordered_map<colmap::image_t, std::vector<colmap::point2D_t>> req_obs;
   for (colmap::point3D_t p3D_id : required_p3D_ids) {
-    const colmap::Track& track = reconstruction.Point3D(p3D_id).Track();
+    const colmap::Track& track = reconstruction.Point3D(p3D_id).track;
     for (const colmap::TrackElement& track_el : track.Elements()) {
       req_obs[track_el.image_id].push_back(track_el.point2D_idx);
     }
   }
+
+  auto project2img = [&](size_t image_id, size_t p2d_id) {
+    const colmap::Image& image = reconstruction.Image(image_id);
+    const colmap::Point2D& p2D = image.Point2D(p2d_id);
+    const colmap::Point3D& p3d = reconstruction.Point3D(p2D.point3D_id);
+    const colmap::Camera& camera = reconstruction.Camera(image.CameraId());
+
+    Eigen::Vector3d cam_point = image.CamFromWorld() * p3d.xyz;
+    Eigen::Vector2d xy = camera.ImgFromCam(Eigen::Vector2d(cam_point[0] / cam_point[2], cam_point[1] / cam_point[2]));
+    return xy;
+  };
 
   // Add a empty featurepatch for each observation in the problem
   for (auto& points_pair : req_obs) {
@@ -383,49 +403,31 @@ FeatureSet<dtype_o> CostMapExtractor::CreateShallowCostmapFSet(
       // In the sparse case we just copy the metadata
       for (auto& point2D_idx : points_pair.second) {
         FeaturePatch<dtype>& fpatch = fmap.GetFeaturePatch(point2D_idx);
-        std::array<int, 3> patch_shape = {
-            static_cast<int>(fpatch.Height() *
-                            (upsampling_factor + 1.0e-6)),
-            static_cast<int>(fpatch.Width() *
-                            (upsampling_factor + 1.0e-6)),
-            out_channels};
-        cost_fmap.Patches().emplace(
-            point2D_idx,
-            FeaturePatch<dtype_o>(
-                NULL, patch_shape, fpatch.Corner(), fpatch.Scale()));
+        std::array<int, 3> patch_shape = {static_cast<int>(fpatch.Height() * (upsampling_factor + 1.0e-6)),
+                                          static_cast<int>(fpatch.Width() * (upsampling_factor + 1.0e-6)),
+                                          out_channels};
+        cost_fmap.Patches().emplace(point2D_idx, FeaturePatch<dtype_o>(NULL, patch_shape, fpatch.Corner(), fpatch.Scale()));
         // No Fill, no allocation
 
-        cost_fmap.GetFeaturePatch(point2D_idx)
-            .SetUpsamplingFactor(upsampling_factor);
+        cost_fmap.GetFeaturePatch(point2D_idx).SetUpsamplingFactor(upsampling_factor);
       }
     } else {
       // In the dense case we slice a smaller patch
-      std::array<int, 3> patch_shape = {
-        static_cast<int>(config_.dense_cut_size *
-                        (upsampling_factor + 1.0e-6)),
-        static_cast<int>(config_.dense_cut_size *
-                        (upsampling_factor + 1.0e-6)),
-        out_channels};
+      std::array<int, 3> patch_shape = {static_cast<int>(config_.dense_cut_size * (upsampling_factor + 1.0e-6)),
+                                        static_cast<int>(config_.dense_cut_size * (upsampling_factor + 1.0e-6)),
+                                        out_channels};
       // Get the dense feature patch
       FeaturePatch<dtype>& dense_patch = fmap.GetFeaturePatch(kDensePatchId);
       for (colmap::point2D_t p2D_idx : points_pair.second) {
         const colmap::Point2D& p2D = image.Point2D(p2D_idx);
         if (p2D.HasPoint3D()) {
-          Eigen::Vector2d xy = ProjectPointToImage(
-            reconstruction.Point3D(p2D.Point3DId()).XYZ(),
-            image.ProjectionMatrix(),
-            reconstruction.Camera(image.CameraId())
-          );
+          Eigen::Vector2d xy = project2img(image.ImageId(), p2D_idx);
           // We extract the corner around the reprojected observation
           Eigen::Vector2i corner = dense_patch.ToCorner(xy, config_.dense_cut_size);
           // No Fill, no allocation
-          cost_fmap.Patches().emplace(
-          p2D_idx,
-            FeaturePatch<dtype_o>(
-                NULL, patch_shape, corner, dense_patch.Scale()));
+          cost_fmap.Patches().emplace(p2D_idx, FeaturePatch<dtype_o>(NULL, patch_shape, corner, dense_patch.Scale()));
 
-          cost_fmap.GetFeaturePatch(p2D_idx)
-            .SetUpsamplingFactor(upsampling_factor);
+          cost_fmap.GetFeaturePatch(p2D_idx).SetUpsamplingFactor(upsampling_factor);
         }
       }
     }

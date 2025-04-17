@@ -9,13 +9,11 @@
 namespace pixsfm {
 
 // Feature Bundle adjustment based on Ceres-Solver.
-class GeometricBundleOptimizer
-    : public BundleOptimizer<GeometricBundleOptimizer> {
+class GeometricBundleOptimizer : public BundleOptimizer<GeometricBundleOptimizer> {
   using Base = BundleOptimizer<GeometricBundleOptimizer>;
 
  public:
-  GeometricBundleOptimizer(const BundleOptimizerOptions& options,
-                           const BundleAdjustmentSetup& setup)
+  GeometricBundleOptimizer(const BundleOptimizerOptions& options, const BundleAdjustmentSetup& setup)
       : BundleOptimizer(options, setup) {
     STDLOG(INFO) << "Start geometric bundle adjustment." << std::endl;
   }
@@ -24,8 +22,7 @@ class GeometricBundleOptimizer
     return Base::Run(reconstruction);
   }
 
-  void SetUp(colmap::Reconstruction* reconstruction,
-             std::shared_ptr<ceres::LossFunction> loss_function) {
+  void SetUp(colmap::Reconstruction* reconstruction, std::shared_ptr<ceres::LossFunction> loss_function) {
     return Base::SetUp(reconstruction, loss_function.get());
   }
 
@@ -42,7 +39,7 @@ int GeometricBundleOptimizer::AddResiduals<>(
     colmap::Reconstruction* reconstruction,
     ceres::LossFunction* loss_function) {
   const bool constant_pose =
-      (!options_.refine_extrinsics || setup_.HasConstantPose(image_id) ||
+      (!options_.refine_extrinsics || setup_.HasConstantCamPose(image_id) ||
        !setup_.HasImage(image_id));
 
   colmap::Image& image = reconstruction->Image(image_id);
@@ -54,28 +51,22 @@ int GeometricBundleOptimizer::AddResiduals<>(
     return 0;
   }
 
-  colmap::point3D_t point3D_id = point2D.Point3DId();
+  colmap::point3D_t point3D_id = point2D.point3D_id;
   colmap::Point3D& point3D = reconstruction->Point3D(point3D_id);
 
-  double* qvec_data = image.Qvec().data();
-  double* tvec_data = image.Tvec().data();
-  double* camera_params_data = camera.ParamsData();
-  double* xyz = point3D.XYZ().data();
+  double* qvec_data = image.CamFromWorld().rotation.coeffs().data();
+  double* tvec_data = image.CamFromWorld().translation.data();
+  double* camera_params_data = camera.params.data();
+  double* xyz = point3D.xyz.data();
 
   ceres::ResidualBlockId block_id;
 
   if (constant_pose) {
-    ceres::CostFunction* cost_function = CreateGeometricConstantPoseCostFunctor(
-        camera.ModelId(), image.Qvec(), image.Tvec(), point2D.XY());
-    block_id = problem_->AddResidualBlock(cost_function, loss_function, xyz,
-                                          camera_params_data);
+    ceres::CostFunction* cost_function = CreateGeometricConstantPoseCostFunctor(camera.model_id, image.CamFromWorld(), point2D.xy);
+    block_id = problem_->AddResidualBlock(cost_function, loss_function, xyz, camera_params_data);
   } else {
-    ceres::CostFunction* cost_function =
-        CreateGeometricCostFunctor(camera.ModelId(), point2D.XY());
-
-    block_id =
-        problem_->AddResidualBlock(cost_function, loss_function, qvec_data,
-                                   tvec_data, xyz, camera_params_data);
+    ceres::CostFunction* cost_function = CreateGeometricCostFunctor(camera.model_id, point2D.xy);
+    block_id = problem_->AddResidualBlock(cost_function, loss_function, qvec_data, tvec_data, xyz, camera_params_data);
     image_num_residuals_[image_id] += 1;
   }
 

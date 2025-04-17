@@ -1,5 +1,5 @@
 # cmake version to be used
-cmake_minimum_required( VERSION 3.0 )
+cmake_minimum_required( VERSION 3.10 )
 
 # project name
 project(PIXSFM)
@@ -8,7 +8,7 @@ project(PIXSFM)
 # Include CMake dependencies
 ################################################################################
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -Wno-deprecated")
 
 # Include helper macros and commands, and allow the included file to override
 # the CMake policies in this file
@@ -23,6 +23,8 @@ option(AVX2_ENABLED "Whether to compile with AVX2 support" ON)
 if(TESTS_ENABLED)
     enable_testing()
 endif()
+
+set(CMAKE_PREFIX_PATH /home/liu/library/install_full)
 
 ################################################################################
 # Find packages

@@ -13,7 +13,8 @@ namespace py = pybind11;
 #include <Eigen/Dense>
 
 #include <ceres/ceres.h>
-#include <colmap/base/projection.h>
+
+#include <colmap/scene/projection.h>
 #include <colmap/util/timer.h>
 #include <colmap/util/types.h>
 
@@ -179,7 +180,7 @@ ReferenceExtractor::GetVisibleObservations(
   colmap::Track visible_track;
   std::vector<Eigen::Vector2d> xys;
   // xys.reserve(point3D.Track().Length());
-  for (auto& track_el : point3D.Track().Elements()) {
+  for (auto& track_el : point3D.track.Elements()) {
     colmap::image_t image_id = track_el.image_id;
     colmap::point2D_t point2D_idx = track_el.point2D_idx;
 
@@ -197,8 +198,7 @@ ReferenceExtractor::GetVisibleObservations(
     const colmap::Camera& camera = reconstruction->Camera(image.CameraId());
 
     Eigen::Vector2d projected;
-    WorldToPixel(camera, image.Qvec(), image.Tvec(), point3D.XYZ(),
-                 projected.data());
+    WorldToPixel(camera, image.CamFromWorld().rotation.coeffs(), image.CamFromWorld().translation, point3D.xyz, projected.data());
     xys.push_back(projected);
   }
   return std::make_pair(visible_track, xys);
@@ -277,7 +277,7 @@ Reference ReferenceExtractor::ComputeReference(
           reconstruction->Image(track.Element(ref_idx).image_id);
       const colmap::Camera& camera = reconstruction->Camera(image.CameraId());
       auto node_offsets = NodeOffsets3D<N_NODES>(
-          image, camera, reconstruction->Point3D(point3D_id).XYZ(),
+          image, camera, reconstruction->Point3D(point3D_id).xyz,
           interpolation_config_);
 
       return Reference(
@@ -338,24 +338,28 @@ OffsetMatrix3d<N_NODES> NodeOffsets3D(
   } else {
     assert(N_NODES == interpolation_config.nodes.size());
   }
-  const auto& Tmat = image.ProjectionMatrix();
 
-  Eigen::Vector2d projected = colmap::ProjectPointToImage(xyz, Tmat, camera);
+  auto project2img = [&](const colmap::Image& image, const Eigen::Vector3d& pt3d, const colmap::Camera& camera) {
+    Eigen::Vector3d cam_point = image.CamFromWorld() * pt3d;
+    Eigen::Vector2d xy = camera.ImgFromCam(Eigen::Vector2d(cam_point[0] / cam_point[2], cam_point[1] / cam_point[2]));
+    return xy;
+  };
+
+  Eigen::Vector2d projected = project2img(image, xyz, camera);
 
   double depth;
-  CalculateDepth(image.Qvec().data(), image.Tvec().data(), xyz.data(), &depth);
+  CalculateDepth(image.CamFromWorld().rotation.coeffs().data(), image.CamFromWorld().translation.data(), xyz.data(), &depth);
 
   for (int i = 0; i < interpolation_config.nodes.size(); i++) {
     Eigen::Vector2d projected_node = projected;
     projected_node(0) += interpolation_config.nodes[i][0];
     projected_node(1) += interpolation_config.nodes[i][1];
 
-    Eigen::Vector2d xy = camera.ImageToWorld(projected_node);
+    Eigen::Vector2d xy = camera.ImgFromCam(projected_node);
     Eigen::Vector3d xyz_node{xy(0), xy(1), 1.0};
 
     xyz_node = xyz_node * depth;
-    Eigen::Vector3d res =
-        image.RotationMatrix().transpose() * (xyz_node - image.Tvec()) - xyz;
+    Eigen::Vector3d res = image.CamFromWorld().rotation.toRotationMatrix().transpose() * (xyz_node - image.CamFromWorld().translation) - xyz;
 
     offsets.row(i) = res.transpose();
   }

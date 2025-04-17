@@ -33,11 +33,11 @@
 #define TEST_NAME "bundle_adjustment/bundle_optimizer"
 #include <colmap/util/testing.h>
 
-#include <colmap/base/camera_models.h>
-#include <colmap/base/correspondence_graph.h>
-#include <colmap/base/projection.h>
-#include <colmap/optim/bundle_adjustment.h>
-#include <colmap/util/random.h>
+#include <colmap/sensor/models.h>
+#include <colmap/scene/correspondence_graph.h>
+#include <colmap/scene/projection.h>
+#include <colmap/estimators/bundle_adjustment.h>
+#include <colmap/math/random.h>
 
 #include "bundle_adjustment/src/bundle_adjustment_options.h"
 #include "bundle_adjustment/src/geometric_bundle_optimizer.h"

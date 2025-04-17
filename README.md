@@ -1,3 +1,5 @@
+20250417 update: version compiled with colmap 3.11dev
+
 # Pixel-Perfect Structure-from-Motion
 
 ### Best student paper award @ [ICCV 2021](http://iccv2021.thecvf.com/)
