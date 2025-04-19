@@ -5,6 +5,8 @@
 
 namespace py = pybind11;
 
+#include <string_view>
+
 #include <colmap/util/logging.h>
 #include <colmap/util/types.h>
 

@@ -13,8 +13,7 @@ def read_image_id_to_name_from_db(database_path: Path) -> Dict[int, str]:
     return id2name
 
 
-def read_keypoints_from_db(database_path: Path, as_cpp_map: bool = True,
-                           ) -> Dict[str, np.ndarray]:
+def read_keypoints_from_db(database_path: Path, as_cpp_map: bool = True,) -> Dict[str, np.ndarray]:
     if as_cpp_map:
         keypoints_dict = Map_NameKeypoints()
     else:

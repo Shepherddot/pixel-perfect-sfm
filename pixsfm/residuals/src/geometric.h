@@ -16,9 +16,9 @@ Initialization Wrappers: (resolving camera model templates)
 
 ceres::CostFunction* CreateGeometricCostFunctor(colmap::CameraModelId camera_model_id, const Eigen::Vector2d& point2D) {
   switch (camera_model_id) {
-#define CAMERA_MODEL_CASE(CameraModel)                                        \
-  case colmap::CameraModel::model_id:                                         \
-    return colmap::ReprojErrorCostFunction<colmap::CameraModel>::Create(point2D);                                                             \
+#define CAMERA_MODEL_CASE(CameraModel)                                           \
+  case colmap::CameraModel::model_id:                                            \
+    return colmap::ReprojErrorCostFunctor<colmap::CameraModel>::Create(point2D); \
     break;
     CAMERA_MODEL_SWITCH_CASES
 #undef CAMERA_MODEL_CASE
@@ -29,9 +29,9 @@ ceres::CostFunction* CreateGeometricConstantPoseCostFunctor(colmap::CameraModelI
                                                             const colmap::Rigid3d& cam_from_world,
                                                             const Eigen::Vector2d& point2D) {
   switch (camera_model_id) {
-#define CAMERA_MODEL_CASE(CameraModel)                       \
-  case colmap::CameraModel::model_id:                        \
-    return colmap::ReprojErrorConstantPoseCostFunction<colmap::CameraModel>::Create(cam_from_world, point2D);   \
+#define CAMERA_MODEL_CASE(CameraModel)                                                                       \
+  case colmap::CameraModel::model_id:                                                                        \
+    return colmap::ReprojErrorConstantPoseCostFunctor<colmap::CameraModel>::Create(point2D, cam_from_world); \
     break;
     CAMERA_MODEL_SWITCH_CASES
 #undef CAMERA_MODEL_CASE

@@ -66,7 +66,7 @@ bool SingleQueryKeypointOptimizer::RunQuery(
     RefType& references, std::vector<colmap::point2D_t>* patch_idxs,
     std::vector<bool>* inliers) {
   if (patch_idxs) {
-    THROW_CHECK_EQ(patch_idxs->size(), keypoints.rows())
+    THROW_CHECK_EQ(patch_idxs->size(), keypoints.rows());
   }
   size_t channels = fmap.Channels();
   size_t n_nodes = interpolation_config_.nodes.size();

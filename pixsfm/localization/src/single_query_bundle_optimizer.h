@@ -76,7 +76,7 @@ bool SingleQueryBundleOptimizer::RunQuery(
   size_t channels = fmap.Channels();
   size_t n_nodes = interpolation_config_.nodes.size();
   if (patch_idxs) {
-    THROW_CHECK_EQ(patch_idxs->size(), points3D.size())
+    THROW_CHECK_EQ(patch_idxs->size(), points3D.size());
   }
 #define REGISTER_METHOD(CHANNELS, N_NODES)                                 \
   if (channels == CHANNELS && n_nodes == N_NODES) {                        \

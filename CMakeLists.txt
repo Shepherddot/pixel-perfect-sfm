@@ -14,6 +14,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -Wno-deprecate
 # the CMake policies in this file
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CMakeHelper.cmake NO_POLICY_SCOPE)
 
+set(CMAKE_CXX_STANDARD 20)
+
 ################################################################################
 # Options
 ################################################################################
@@ -23,8 +25,6 @@ option(AVX2_ENABLED "Whether to compile with AVX2 support" ON)
 if(TESTS_ENABLED)
     enable_testing()
 endif()
-
-set(CMAKE_PREFIX_PATH /home/liu/library/install_full)
 
 ################################################################################
 # Find packages

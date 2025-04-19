@@ -50,7 +50,8 @@ void bind_graph(py::module& m) {
              match.sim = sim;
              return match;
            }),
-           py::arg("node_idx"), py::arg("similarity"))
+           py::arg("node_idx"),
+           py::arg("similarity"))
       .def_readwrite("node_idx", &Match::node_idx)
       .def_readwrite("similarity", &Match::sim)
       .def("__repr__", [](const Match& self) {

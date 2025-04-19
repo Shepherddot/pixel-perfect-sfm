@@ -241,7 +241,7 @@ void CostMapExtractor::FillPointCostmap(FeaturePatch<dtype>& fpatch,
                                         Reference& reference,
                                         FeaturePatch<dtype_o>& cost_patch) {
   THROW_CHECK_EQ(fpatch.Channels(), CHANNELS);
-  THROW_CHECK_EQ(cost_patch.Channels(), config_.GetEffectiveChannels())
+  THROW_CHECK_EQ(cost_patch.Channels(), config_.GetEffectiveChannels());
 
   PatchInterpolator<dtype, CHANNELS, 1> patch_interpolator(
       interpolation_config_, fpatch);

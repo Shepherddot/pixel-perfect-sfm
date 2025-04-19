@@ -104,9 +104,7 @@ class PixSfM:
         cache_path = self.resolve_cache_path(cache_path, output_path.parent)
         keypoints = read_keypoints_from_db(database_path)
         pairs, matches, scores = read_matches_from_db(database_path)
-        keypoints, ka_data, feature_manager = self.run_ka(
-                keypoints, image_dir, pairs, (matches, scores), cache_path,
-                feature_manager)
+        keypoints, ka_data, feature_manager = self.run_ka(keypoints, image_dir, pairs, (matches, scores), cache_path, feature_manager)
         if database_path != output_path:
             shutil.copy(database_path, output_path)
         write_keypoints_to_db(output_path, keypoints)
